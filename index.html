@@ -1167,10 +1167,18 @@
   .overlay-editor {
     position: fixed; inset: 0; z-index: 9990;
     background: rgba(0,0,0,0.92);
-    display: none;
-    flex-direction: column;
+    display: flex; flex-direction: column;
+    /* Closed state: invisible, ignores clicks AND tab focus. .open
+       animates a gentle fade; previously the editor snapped on/off
+       without transition which felt abrupt for a full-screen modal.
+       visibility transitions linearly so the modal stays paintable
+       through the whole fade-out, then truly hidden afterwards. */
+    opacity: 0; pointer-events: none; visibility: hidden;
+    transition: opacity 0.18s ease-out, visibility 0.18s linear;
   }
-  .overlay-editor.open { display: flex; }
+  .overlay-editor.open {
+    opacity: 1; pointer-events: auto; visibility: visible;
+  }
   .oe-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 20px;
@@ -2641,6 +2649,11 @@ function loadCurrentSong() {
   editor.value = song.text;
   songTitleIn.value = song.title;
   keyInput.value = song.key || "";
+  // Switching songs should land the user at the top with a clean cursor;
+  // otherwise the previous song's scroll/selection bleeds through and the
+  // first lyric of the new song starts mid-screen.
+  editor.scrollTop = 0;
+  try { editor.setSelectionRange(0, 0); } catch (_) {}
   updateInfoBarForType(song);
   // Reset the auto-scroll memo: state.currentPageIdx resets to 0 for the new
   // song, but the module-scoped _lastAutoScrolledPageIdx still holds the
@@ -3224,12 +3237,15 @@ function refresh() {
   // visibilitychange / openExternalPrompter etc.) writes the latest
   // text instead of a stale snapshot. The keystroke-driven debounced
   // save in the input handler already covers normal editing — this
-  // belt-and-braces sync makes EVERY refresh() carrier a fresh state.
-  if (song) {
+  // belt-and-braces sync makes EVERY refresh() carry a fresh state.
+  // Defensive: song / sl / snapshot may have been mutated out from
+  // under us (e.g. a delete fired between input and refresh). Only
+  // touch what's still there.
+  if (song && song.id) {
     song.text = editor.value;
     const sl = setlistsData.setlists.find(s => s.id === setlistsData.currentSetlistId);
-    if (sl) {
-      const snapshot = sl.songs.find(s => s.id === song.id);
+    if (sl && Array.isArray(sl.songs)) {
+      const snapshot = sl.songs.find(s => s && s.id === song.id);
       if (snapshot) snapshot.text = editor.value;
     }
   }
@@ -4565,9 +4581,21 @@ function showToast(message, type, duration) {
   function dismiss() {
     if (dismissed) return;
     dismissed = true;
-    el.style.opacity = "0";
-    el.style.transform = "translateY(8px)";
-    setTimeout(() => { el.remove(); }, 250);
+    // Collapse the toast's vertical space gracefully so any toasts
+    // stacked above slide down to fill the gap, instead of a sudden jump.
+    const h = el.getBoundingClientRect().height;
+    el.style.height = h + "px";
+    el.style.maxHeight = h + "px";
+    el.style.transition = "opacity .2s, transform .2s, max-height .2s, margin .2s, padding .2s";
+    requestAnimationFrame(() => {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(8px)";
+      el.style.maxHeight = "0";
+      el.style.marginTop = "-8px"; // counteract the stack's gap so neighbours close in
+      el.style.paddingTop = "0";
+      el.style.paddingBottom = "0";
+    });
+    setTimeout(() => { el.remove(); }, 280);
   }
   setTimeout(dismiss, ms);
   return el;
@@ -4609,12 +4637,21 @@ function setSaveIndicator(state, label) {
 
 function saveSetlistsDebounced() {
   clearTimeout(saveSetlistsDebounced._t);
-  // Only flip to "saving…" if we're not already in an error state — once
-  // we've shown an error the user is told to act, and a successful save
-  // will explicitly clear the error path inside saveSetlistsNow().
+  // Only show "saving…" if we have an actual real edit pending. We compare
+  // the JSON we'd write now against the JSON currently in localStorage —
+  // if they're identical, this is a no-op debounce (e.g. clicking around
+  // without editing) and we should NOT flash the indicator. Also skip if
+  // we're already in error state (let the error message stand until a
+  // successful save clears it).
   const indicator = document.getElementById("saveIndicator");
-  if (!indicator || !indicator.classList.contains("error")) {
-    setSaveIndicator("saving", "保存中…");
+  if (indicator && !indicator.classList.contains("error")) {
+    let dirty = true;
+    try {
+      const fresh = JSON.stringify(setlistsData);
+      const stored = localStorage.getItem(SETLIST_STORAGE_KEY);
+      if (stored && stored === fresh) dirty = false;
+    } catch (_) {}
+    if (dirty) setSaveIndicator("saving", "保存中…");
   }
   saveSetlistsDebounced._t = setTimeout(() => saveSetlistsNow(), 400);
 }
@@ -4645,13 +4682,24 @@ function saveSetlistsNow() {
   }
 }
 
+// persistCurrent is hot — called from the editor input handler AND from a
+// refresh() / renderSongList() wrapper below. Coalesce repeated calls into
+// a single microtask so a keystroke that goes through refresh→persist
+// AND the input-handler's explicit persist only does ONE deep snapshot
+// per cycle, instead of two. snapshotCurrentState's JSON.parse(stringify)
+// gets expensive on big setlists (50+ songs); double-running it on every
+// keystroke causes visible typing lag.
 function persistCurrent() {
-  // Write the live state back into the active setlist in setlistsData
-  const sl = setlistsData.setlists.find(s => s.id === setlistsData.currentSetlistId);
-  if (!sl) return;
-  Object.assign(sl, snapshotCurrentState());
-  sl.name = state.concertTitle;
-  saveSetlistsDebounced();
+  if (persistCurrent._pending) return;
+  persistCurrent._pending = true;
+  Promise.resolve().then(() => {
+    persistCurrent._pending = false;
+    const sl = setlistsData.setlists.find(s => s.id === setlistsData.currentSetlistId);
+    if (!sl) return;
+    Object.assign(sl, snapshotCurrentState());
+    sl.name = state.concertTitle;
+    saveSetlistsDebounced();
+  });
 }
 
 function loadSetlistsFromStorage() {
