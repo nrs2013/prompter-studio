@@ -2276,8 +2276,9 @@ function buildSinglePageHTML(page, members, opts) {
   </div>
   <script>
   const M=${JSON.stringify(members)};const P=${JSON.stringify(page)};const IS_MC=${JSON.stringify(isMCFlag)};
+  function eh(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
   function rcol(c){if(!c)return"";if(Array.isArray(c)&&c.length>0&&typeof c[0]==="object")return"";if(Array.isArray(c)){const cs=c.map(id=>M[id]?.color||"#fff");const stops=cs.map((x,k)=>x+" "+(k*100/(cs.length-1)).toFixed(0)+"%").join(", ");return"background:linear-gradient(90deg,"+stops+");-webkit-background-clip:text;background-clip:text;color:transparent;"}if(M[c])return"color:"+M[c].color+";";if(c.startsWith("#"))return"color:"+c+";";return""}
-  function rtext(text,color){if(!color)return text;if(Array.isArray(color)&&color.length>0&&typeof color[0]==="object"){const spans=color.slice().sort((a,b)=>a.s-b.s);let out="";let pos=0;for(const s of spans){const sE=s.e==null?text.length:Math.min(s.e,text.length);if(s.s>pos)out+=text.slice(pos,s.s);out+='<span style="'+rcol(s.c)+'">'+text.slice(s.s,sE)+'</span>';pos=sE}if(pos<text.length)out+=text.slice(pos);return out}return'<span style="'+rcol(color)+'">'+text+'</span>'}
+  function rtext(text,color){if(!color)return eh(text);if(Array.isArray(color)&&color.length>0&&typeof color[0]==="object"){const spans=color.slice().sort((a,b)=>a.s-b.s);let out="";let pos=0;for(const s of spans){const sE=s.e==null?text.length:Math.min(s.e,text.length);if(s.s>pos)out+=eh(text.slice(pos,s.s));out+='<span style="'+rcol(s.c)+'">'+eh(text.slice(s.s,sE))+'</span>';pos=sE}if(pos<text.length)out+=eh(text.slice(pos));return out}return'<span style="'+rcol(color)+'">'+eh(text)+'</span>'}
   function rstage(b,scale){
     // Fixed scale: 0 = center (50%). -4 → 10%, +4 → 90%. Each unit = 10% of stage width.
     function idealPct(p){const c=Math.max(-4,Math.min(4,p||0));return 50+c*10}
@@ -2307,15 +2308,15 @@ function buildSinglePageHTML(page, members, opts) {
     entries.forEach(({id,pos,pct})=>{const m=M[id];if(!m)return;
       x+='<div class="mic" data-mid="'+id+'" data-pos="'+pos+'" style="left:'+pct.toFixed(1)+'%">'+
         '<div class="mic-card" style="border:'+bd+' solid '+m.color+';width:'+cWvh.toFixed(2)+'vh;height:'+cHvh.toFixed(2)+'vh">'+
-        '<div class="mic-name" style="font-size:'+nFs+'">'+m.name+'</div>'+
+        '<div class="mic-name" style="font-size:'+nFs+'">'+eh(m.name)+'</div>'+
         '<div class="mic-num" style="background:'+m.color+';font-size:'+numFs+'">'+Math.abs(pos||0)+'</div>'+
         '</div></div>'
     });
     x+='</div>';return x
   }
-  function rb(b,scale){if(b.kind==="lyric"){const base=typeof IS_MC!=="undefined"&&IS_MC?7.5:11;const fs=(base*scale).toFixed(2)+'vh';const chFs=(4*scale).toFixed(2)+'vh';if(b.segments){const st=rcol(b.color);const segs=b.segments.map(s=>'<span class="seg">'+(s.chord?'<span class="seg-chord">'+s.chord+'</span>':'')+s.text+'</span>').join('');return'<div class=b-lyric><div class="text multi" style="font-size:'+fs+';'+st+'">'+segs+'</div></div>'}return'<div class=b-lyric>'+(b.chord?'<div class=chord style="font-size:'+chFs+'">'+b.chord+'</div>':'')+'<div class=text style="font-size:'+fs+'">'+rtext(b.text||"",b.color)+'</div></div>'}if(b.kind==="gap"){const gh=((b.size||4)*scale).toFixed(2)+'vh';return'<div class="b-gap" style="height:'+gh+'"></div>'}if(b.kind==="direction"){const fs=(7*scale).toFixed(2)+'vh';const bs=(2.4*scale).toFixed(2)+'vh';return'<div class="b-direction"><span class="dir-badge" style="font-size:'+bs+'">CUE</span><span class="dir-content" style="font-size:'+fs+'">'+b.text+'</span></div>'}if(b.kind==="stage")return rstage(b,scale);if(b.kind==="chords"){const fs=(5.5*scale).toFixed(2)+'vh';return'<div class="b-chords">'+b.chords.map(c=>'<div class="cell" style="font-size:'+fs+'">'+c+'</div>').join('')+'</div>'}return""}
+  function rb(b,scale){if(b.kind==="lyric"){const base=typeof IS_MC!=="undefined"&&IS_MC?7.5:11;const fs=(base*scale).toFixed(2)+'vh';const chFs=(4*scale).toFixed(2)+'vh';if(b.segments){const st=rcol(b.color);const segs=b.segments.map(s=>'<span class="seg">'+(s.chord?'<span class="seg-chord">'+eh(s.chord)+'</span>':'')+eh(s.text)+'</span>').join('');return'<div class=b-lyric><div class="text multi" style="font-size:'+fs+';'+st+'">'+segs+'</div></div>'}return'<div class=b-lyric>'+(b.chord?'<div class=chord style="font-size:'+chFs+'">'+eh(b.chord)+'</div>':'')+'<div class=text style="font-size:'+fs+'">'+rtext(b.text||"",b.color)+'</div></div>'}if(b.kind==="gap"){const gh=((b.size||4)*scale).toFixed(2)+'vh';return'<div class="b-gap" style="height:'+gh+'"></div>'}if(b.kind==="direction"){const fs=(7*scale).toFixed(2)+'vh';const bs=(2.4*scale).toFixed(2)+'vh';return'<div class="b-direction"><span class="dir-badge" style="font-size:'+bs+'">CUE</span><span class="dir-content" style="font-size:'+fs+'">'+eh(b.text)+'</span></div>'}if(b.kind==="stage")return rstage(b,scale);if(b.kind==="chords"){const fs=(5.5*scale).toFixed(2)+'vh';return'<div class="b-chords">'+b.chords.map(c=>'<div class="cell" style="font-size:'+fs+'">'+eh(c)+'</div>').join('')+'</div>'}return""}
   function cs(p){return 1}
-  function buildInterlude(p,s){const snameFs=(12*s).toFixed(2)+'vh',snameMb=(3*s).toFixed(2)+'vh',bnumFs=(18*s).toFixed(2)+'vh',bunitFs=(4.5*s).toFixed(2)+'vh',bunitMt=(1*s).toFixed(2)+'vh',nextLblFs=(2.6*s).toFixed(2)+'vh',nextLblMt=(4*s).toFixed(2)+'vh',nextNameFs=(8*s).toFixed(2)+'vh',nextNameMt=(1.5*s).toFixed(2)+'vh',soloLblFs=(4*s).toFixed(2)+'vh',soloNameFs=(14*s).toFixed(2)+'vh',soloNameMt=(3*s).toFixed(2)+'vh';if(p.isNextOnly){return '<div class="next-song-solo-label" style="font-size:'+soloLblFs+'">→ NEXT SONG</div><div class="next-song-solo-name" style="font-size:'+soloNameFs+';margin-top:'+soloNameMt+'">'+(p.nextSongName||"")+'</div>'}const ns=p.nextSongName||"";const nextHtml=ns?('<div class="next-song" style="font-size:'+nextLblFs+';margin-top:'+nextLblMt+'">→ NEXT SONG</div><div class="next-song-name" style="font-size:'+nextNameFs+';margin-top:'+nextNameMt+';line-height:1.15">'+ns+'</div>'):'';return '<div class="sname" style="font-size:'+snameFs+';margin-bottom:'+snameMb+'">'+p.sectionName+'</div><div class="bnum" style="font-size:'+bnumFs+'">'+p.bars+'</div><div class="bunit" style="font-size:'+bunitFs+';margin-top:'+bunitMt+'">BARS</div>'+nextHtml}
+  function buildInterlude(p,s){const snameFs=(12*s).toFixed(2)+'vh',snameMb=(3*s).toFixed(2)+'vh',bnumFs=(18*s).toFixed(2)+'vh',bunitFs=(4.5*s).toFixed(2)+'vh',bunitMt=(1*s).toFixed(2)+'vh',nextLblFs=(2.6*s).toFixed(2)+'vh',nextLblMt=(4*s).toFixed(2)+'vh',nextNameFs=(8*s).toFixed(2)+'vh',nextNameMt=(1.5*s).toFixed(2)+'vh',soloLblFs=(4*s).toFixed(2)+'vh',soloNameFs=(14*s).toFixed(2)+'vh',soloNameMt=(3*s).toFixed(2)+'vh';if(p.isNextOnly){return '<div class="next-song-solo-label" style="font-size:'+soloLblFs+'">→ NEXT SONG</div><div class="next-song-solo-name" style="font-size:'+soloNameFs+';margin-top:'+soloNameMt+'">'+eh(p.nextSongName||"")+'</div>'}const ns=p.nextSongName||"";const nextHtml=ns?('<div class="next-song" style="font-size:'+nextLblFs+';margin-top:'+nextLblMt+'">→ NEXT SONG</div><div class="next-song-name" style="font-size:'+nextNameFs+';margin-top:'+nextNameMt+';line-height:1.15">'+eh(ns)+'</div>'):'';return '<div class="sname" style="font-size:'+snameFs+';margin-bottom:'+snameMb+'">'+eh(p.sectionName)+'</div><div class="bnum" style="font-size:'+bnumFs+'">'+p.bars+'</div><div class="bunit" style="font-size:'+bunitFs+';margin-top:'+bunitMt+'">BARS</div>'+nextHtml}
   function anyLineWraps(sl){const els=sl.querySelectorAll('.b-lyric .text, .next-song-name, .next-song-solo-name');for(const el of els){const cs=getComputedStyle(el);const lh=parseFloat(cs.lineHeight)||(parseFloat(cs.fontSize)*1.35);if(el.clientHeight>lh*1.4) return true}return false}
   function renderOverlayHTML(ov){
     if(!ov||!ov.length)return"";
@@ -2331,7 +2332,7 @@ function buildSinglePageHTML(page, members, opts) {
         const col='color:'+(e.color||'#fff')+';';
         const pad=e.padding!=null?('padding:'+e.padding+'%;'):'padding:0.5%;';
         const ta=e.textAlign?('text-align:'+e.textAlign+';'):'';
-        return '<div class="ov-el ov-text" style="'+pos+col+fs+fw+fstyle+ff+bg+pad+ta+'">'+(e.text||'')+'</div>';
+        return '<div class="ov-el ov-text" style="'+pos+col+fs+fw+fstyle+ff+bg+pad+ta+'">'+eh(e.text||'')+'</div>';
       }
       if(e.type==="rect"||e.type==="rect-rounded"||e.type==="circle"){
         const bd=e.strokeWidth?('border:'+e.strokeWidth+'px solid '+(e.stroke||'#fff')+';'):'';
@@ -4057,6 +4058,7 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
   </div></div>
   <script>
   const M=${JSON.stringify(members)};const P=${JSON.stringify(pages)};const SN=${JSON.stringify(songName)};const CT=${JSON.stringify(concertTitle)};const CDS=${JSON.stringify(countdownSec)};const IS_MC=${JSON.stringify(isMC)};const NEXT_SONG=${JSON.stringify(nextSongName)};
+  function eh(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
   let i=0;
   // Countdown for MC pages
   let cdRem=CDS;let cdIv=null;
@@ -4064,7 +4066,7 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
   function updateCd(){const el=document.getElementById("cd");if(!el)return;el.textContent=fmtCd(cdRem);el.className=cdRem<=10?"cd cd-red":"cd"}
   if(CDS!==null){updateCd();cdIv=setInterval(()=>{cdRem=Math.max(0,cdRem-1);updateCd();if(cdRem===0){clearInterval(cdIv);cdIv=null}},1000)}
   function rcol(c){if(!c)return"";if(Array.isArray(c)&&c.length>0&&typeof c[0]==="object")return"";if(Array.isArray(c)){const cs=c.map(id=>M[id]?.color||"#fff");const stops=cs.map((x,k)=>x+" "+(k*100/(cs.length-1)).toFixed(0)+"%").join(", ");return"background:linear-gradient(90deg,"+stops+");-webkit-background-clip:text;background-clip:text;color:transparent;"}if(M[c])return"color:"+M[c].color+";";if(c.startsWith("#"))return"color:"+c+";";return""}
-  function rtext(text,color){if(!color)return text;if(Array.isArray(color)&&color.length>0&&typeof color[0]==="object"){const spans=color.slice().sort((a,b)=>a.s-b.s);let out="";let pos=0;for(const s of spans){const sE=s.e==null?text.length:Math.min(s.e,text.length);if(s.s>pos)out+=text.slice(pos,s.s);out+='<span style="'+rcol(s.c)+'">'+text.slice(s.s,sE)+'</span>';pos=sE}if(pos<text.length)out+=text.slice(pos);return out}return'<span style="'+rcol(color)+'">'+text+'</span>'}
+  function rtext(text,color){if(!color)return eh(text);if(Array.isArray(color)&&color.length>0&&typeof color[0]==="object"){const spans=color.slice().sort((a,b)=>a.s-b.s);let out="";let pos=0;for(const s of spans){const sE=s.e==null?text.length:Math.min(s.e,text.length);if(s.s>pos)out+=eh(text.slice(pos,s.s));out+='<span style="'+rcol(s.c)+'">'+eh(text.slice(s.s,sE))+'</span>';pos=sE}if(pos<text.length)out+=eh(text.slice(pos));return out}return'<span style="'+rcol(color)+'">'+eh(text)+'</span>'}
   function rstage(b,scale){
     // Fixed scale: 0 = center (50%). -4 → 10%, +4 → 90%. Each unit = 10% of stage width.
     function idealPct(p){const c=Math.max(-4,Math.min(4,p||0));return 50+c*10}
@@ -4094,18 +4096,18 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
     entries.forEach(({id,pos,pct})=>{const m=M[id];if(!m)return;
       x+='<div class="mic" data-mid="'+id+'" data-pos="'+pos+'" style="left:'+pct.toFixed(1)+'%">'+
         '<div class="mic-card" style="border:'+bd+' solid '+m.color+';width:'+cWvh.toFixed(2)+'vh;height:'+cHvh.toFixed(2)+'vh">'+
-        '<div class="mic-name" style="font-size:'+nFs+'">'+m.name+'</div>'+
+        '<div class="mic-name" style="font-size:'+nFs+'">'+eh(m.name)+'</div>'+
         '<div class="mic-num" style="background:'+m.color+';font-size:'+numFs+'">'+Math.abs(pos||0)+'</div>'+
         '</div></div>'
     });
     x+='</div>';return x
   }
   function rb(b,scale){
-    if(b.kind==="lyric"){const base=IS_MC?7.5:11;const fs=(base*scale).toFixed(2)+'vh';const chFs=(4*scale).toFixed(2)+'vh';return'<div class=b-lyric>'+(b.chord?'<div class=chord style="font-size:'+chFs+'">'+b.chord+'</div>':'')+'<div class=text style="font-size:'+fs+'">'+rtext(b.text||"",b.color)+'</div></div>'}
+    if(b.kind==="lyric"){const base=IS_MC?7.5:11;const fs=(base*scale).toFixed(2)+'vh';const chFs=(4*scale).toFixed(2)+'vh';return'<div class=b-lyric>'+(b.chord?'<div class=chord style="font-size:'+chFs+'">'+eh(b.chord)+'</div>':'')+'<div class=text style="font-size:'+fs+'">'+rtext(b.text||"",b.color)+'</div></div>'}
     if(b.kind==="gap"){const gh=((b.size||4)*scale).toFixed(2)+'vh';return'<div class="b-gap" style="height:'+gh+'"></div>'}
-    if(b.kind==="direction"){const fs=(7*scale).toFixed(2)+'vh';const bs=(2.4*scale).toFixed(2)+'vh';return'<div class="b-direction"><span class="dir-badge" style="font-size:'+bs+'">CUE</span><span class="dir-content" style="font-size:'+fs+'">'+b.text+'</span></div>'}
+    if(b.kind==="direction"){const fs=(7*scale).toFixed(2)+'vh';const bs=(2.4*scale).toFixed(2)+'vh';return'<div class="b-direction"><span class="dir-badge" style="font-size:'+bs+'">CUE</span><span class="dir-content" style="font-size:'+fs+'">'+eh(b.text)+'</span></div>'}
     if(b.kind==="stage")return rstage(b,scale);
-    if(b.kind==="chords"){const fs=(5.5*scale).toFixed(2)+'vh';return'<div class="b-chords">'+b.chords.map(c=>'<div class="cell" style="font-size:'+fs+'">'+c+'</div>').join('')+'</div>'}
+    if(b.kind==="chords"){const fs=(5.5*scale).toFixed(2)+'vh';return'<div class="b-chords">'+b.chords.map(c=>'<div class="cell" style="font-size:'+fs+'">'+eh(c)+'</div>').join('')+'</div>'}
     return""
   }
   // Default scale=1 (5 lines fits comfortably). Auto-shrinks when content overflows. NEVER grows.
@@ -4120,13 +4122,13 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
     const soloNameFs=(14*scale).toFixed(2)+'vh', soloNameMt=(3*scale).toFixed(2)+'vh';
     if(p.isNextOnly){
       return '<div class="next-song-solo-label" style="font-size:'+soloLblFs+'">→ NEXT SONG</div>'+
-        '<div class="next-song-solo-name" style="font-size:'+soloNameFs+';margin-top:'+soloNameMt+'">'+(p.nextSongName||"")+'</div>';
+        '<div class="next-song-solo-name" style="font-size:'+soloNameFs+';margin-top:'+soloNameMt+'">'+eh(p.nextSongName||"")+'</div>';
     }
     const isOut=p.sectionName==="OUTRO";
     const ns=p.nextSongName||(isOut?NEXT_SONG:"");
     const nextHtml=ns?('<div class="next-song" style="font-size:'+nextLblFs+';margin-top:'+nextLblMt+'">→ NEXT SONG</div>'+
-      '<div class="next-song-name" style="font-size:'+nextNameFs+';margin-top:'+nextNameMt+';line-height:1.15">'+ns+'</div>'):'';
-    return '<div class="sname" style="font-size:'+snameFs+';margin-bottom:'+snameMb+'">'+p.sectionName+'</div>'+
+      '<div class="next-song-name" style="font-size:'+nextNameFs+';margin-top:'+nextNameMt+';line-height:1.15">'+eh(ns)+'</div>'):'';
+    return '<div class="sname" style="font-size:'+snameFs+';margin-bottom:'+snameMb+'">'+eh(p.sectionName)+'</div>'+
       '<div class="bnum" style="font-size:'+bnumFs+'">'+p.bars+'</div>'+
       '<div class="bunit" style="font-size:'+bunitFs+';margin-top:'+bunitMt+'">BARS</div>'+nextHtml;
   }
@@ -4145,7 +4147,7 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
         const col='color:'+(e.color||'#fff')+';';
         const pad=e.padding!=null?'padding:'+e.padding+'%;':'padding:0.5%;';
         const ta=e.textAlign?'text-align:'+e.textAlign+';':'';
-        return '<div class="ov-el ov-text" style="'+pos+col+fs+fw+fstyle+ff+bg+pad+ta+'">'+(e.text||'')+'</div>';
+        return '<div class="ov-el ov-text" style="'+pos+col+fs+fw+fstyle+ff+bg+pad+ta+'">'+eh(e.text||'')+'</div>';
       }
       if(e.type==="rect"||e.type==="circle"){
         const bd=e.strokeWidth?'border:'+e.strokeWidth+'px solid '+(e.stroke||'#fff')+';':'';
@@ -4209,7 +4211,7 @@ function buildPrompterHTML(pages, members, songName, concertTitle, songsList, cu
   document.addEventListener("dblclick",(e)=>{e.preventDefault();if(!document.fullscreenElement){document.documentElement.requestFullscreen().catch(()=>{})}else{document.exitFullscreen().catch(()=>{})}});
   // BroadcastChannel: sync with main window (editor side)
   let bc=null;try{bc=new BroadcastChannel("prompter-sync");}catch(e){}
-  if(bc){bc.onmessage=(ev)=>{if(ev.data?.type==="goto"){i=Math.max(0,Math.min(P.length-1,ev.data.page));rd();}else if(ev.data?.type==="content"){location.reload();}};}
+  if(bc){bc.onmessage=(ev)=>{if(ev.data?.type==="goto"){i=Math.max(0,Math.min(P.length-1,ev.data.page));rd();}};}
   function broadcast(){if(bc)bc.postMessage({type:"slide-changed",page:i,total:P.length});}
   function requestSong(dir){if(bc)bc.postMessage({type:dir==="next"?"next-song":"prev-song"});}
   document.addEventListener("keydown",e=>{
@@ -4663,10 +4665,8 @@ function saveSetlistsNow() {
   clearTimeout(saveSetlistsDebounced._t);
   try {
     localStorage.setItem(SETLIST_STORAGE_KEY, JSON.stringify(setlistsData));
-    saveSetlistsNow._lastError = null;
     setSaveIndicator("", "保存済み");
   } catch (e) {
-    saveSetlistsNow._lastError = e;
     setSaveIndicator("error", "保存エラー");
     // Quota exceeded is the realistic failure mode for a stage-director
     // accumulating overlays/songs over many shows. Tell them loudly so they
